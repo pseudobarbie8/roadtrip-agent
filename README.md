@@ -1,71 +1,45 @@
-# roadtrip-agent
+# trip-planner-agent
 
-Agent that plans multi-day road trips under budget and time constraints, with a validator that checks every itinerary.
-
-Started as the Codecademy AI Engineer capstone (trip planner, Streamlit, agentic AI). `v1` is that baseline. `v2` adds real tools, constraint validation, and an eval suite to measure the difference.
+An AI trip planner built with Streamlit and an agentic tool-calling loop. Built for the Codecademy AI Engineer capstone (Trip Planner).
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env        # add your LLM key
-python plan.py "Fes to Merzouga, 4 days, 2 people, max 6000 MAD"
-python evals/run.py --version v2
+export ANTHROPIC_API_KEY=...
 streamlit run app.py
+pytest
 ```
 
-Output is a validated JSON itinerary:
+Pick a destination, days, budget and interests in the sidebar, then click **Plan my trip**. Type feedback in the chat box and the agent revises the plan.
 
-```json
-{"days": [{"stops": ["Fes", "Midelt"], "drive_hours": 4.5, "cost": 1200}], "total_cost": 5400}
-```
+## What it demonstrates
 
-## Results
+| Requirement | Where |
+|---|---|
+| Streamlit app | `app.py` |
+| Agent with tool calling | `agent.py`: the model chooses tools until it can answer |
+| Real-time data integration | `tools.py`: live forecast from Open-Meteo, real places from OpenStreetMap |
+| User feedback loop | chat box in `app.py`: feedback goes back to the agent, which revises the itinerary |
 
-18 test trips in `evals/trips.jsonl`. A trip passes if it meets budget, daily driving limit, and uses only stops the geocoder can find.
+## How it works
 
-| Version | Pass rate | Avg cost / trip | Avg latency |
-|---|---|---|---|
-| v1 (capstone baseline) | - | - | - |
-| v2 (validator + real tools) | - | - | - |
-
-By model (v2):
-
-| Model | Pass rate | Cost | Latency |
-|---|---|---|---|
-| - | - | - | - |
-
-Fill these in from `evals/run.py`. Don't commit numbers you didn't measure.
-
-## What changed from v1
-
-- Real distances and weather via OSRM and Open-Meteo instead of model guesses
-- `validator.py` rejects bad plans and feeds the error back (max 3 retries)
-- Pydantic schemas for the itinerary
-- JSON traces of every agent step in `traces/`
-- Docker image and a CI workflow that runs the tests
+1. Your trip details become a prompt
+2. The model calls `get_weather` and `find_places`; each result is sent back to it
+3. It writes a day-by-day itinerary that uses the forecast
+4. Your feedback is appended to the same conversation and the loop runs again
 
 ## Layout
 
 ```
-plan.py        agent loop
-tools.py       geocode, route, weather
-schemas.py     Pydantic models
-validator.py   constraint checks
-app.py         Streamlit UI
-evals/         test trips and runner
-tests/         unit tests
+app.py       Streamlit UI and feedback chat
+agent.py     tool-calling loop
+tools.py     tool schemas and implementations
+tests/       agent loop and tool tests (no network or API key needed)
 ```
 
-## Known failures
+## Limitations
 
-Replace with what you actually observe, for example:
-- Invents stops when the geocoder returns nothing
-- Underestimates cost on long trips
-
-## Run with Docker
-
-```bash
-docker build -t roadtrip-agent .
-docker run -p 8501:8501 --env-file .env roadtrip-agent
-```
+- Place search is plain OpenStreetMap lookup, so it returns names and addresses but no ratings or opening hours
+- No prices or bookings
+- The conversation lives in the browser session only
 
 MIT
